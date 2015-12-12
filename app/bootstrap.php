@@ -18,6 +18,14 @@ $container['view'] = function($c) {
 	return $view;
 };
 
+$container['db'] = function($c) {
+	return new PDO(
+		'mysql:host=' . $c['config']->get('db.mysql.host') . ';dbname=' .$c['config']->get('db.mysql.dbname') ,
+	$c['config']->get('db.mysql.username'),
+	$c['config']->get('db.mysql.password')
+	);
+};
+
 // Create new App instance
 $app = new \Slim\App($container);
 
