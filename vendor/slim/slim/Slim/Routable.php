@@ -8,7 +8,6 @@
  */
 namespace Slim;
 
-use Closure;
 use Interop\Container\ContainerInterface;
 
 /**
@@ -79,24 +78,6 @@ abstract class Routable
     public function setContainer(ContainerInterface $container)
     {
         $this->container = $container;
-        return $this;
-    }
-
-    /**
-     * Prepend middleware to the middleware collection
-     *
-     * @param mixed $callable The callback routine
-     *
-     * @return static
-     */
-    public function add($callable)
-    {
-        $callable = $this->resolveCallable($callable);
-        if ($callable instanceof Closure) {
-            $callable = $callable->bindTo($this->container);
-        }
-
-        $this->middleware[] = $callable;
         return $this;
     }
 }

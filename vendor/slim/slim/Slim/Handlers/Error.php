@@ -87,7 +87,7 @@ class Error
      * @param  Exception $exception
      * @return string
      */
-    protected function renderHtmlErrorMessage(Exception $exception)
+    private function renderHtmlErrorMessage(Exception $exception)
     {
         $title = 'Slim Application Error';
 
@@ -124,7 +124,7 @@ class Error
      *
      * @return string
      */
-    protected function renderHtmlException(Exception $exception)
+    private function renderHtmlException(Exception $exception)
     {
         $html = sprintf('<div><strong>Type:</strong> %s</div>', get_class($exception));
 
@@ -158,7 +158,7 @@ class Error
      * @param  Exception $exception
      * @return string
      */
-    protected function renderJsonErrorMessage(Exception $exception)
+    private function renderJsonErrorMessage(Exception $exception)
     {
         $error = [
             'message' => 'Slim Application Error',
@@ -188,7 +188,7 @@ class Error
      * @param  Exception $exception
      * @return string
      */
-    protected function renderXmlErrorMessage(Exception $exception)
+    private function renderXmlErrorMessage(Exception $exception)
     {
         $xml = "<error>\n  <message>Slim Application Error</message>\n";
         if ($this->displayErrorDetails) {

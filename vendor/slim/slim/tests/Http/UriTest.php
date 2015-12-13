@@ -614,23 +614,4 @@ class UriTest extends \PHPUnit_Framework_TestCase
 
         $this->assertEquals('http://localhost/test', (string) $uri->withPath('test'));
     }
-
-    /**
-     * When the URL is /foo/index.php/bar/baz, we need the baseURL to be
-     * /foo/index.php so that routing works correctly.
-     *
-     * @ticket 1639 as a fix to 1590 broke this.
-     */
-    public function testRequestURIContainsIndexDotPhp()
-    {
-        $uri = Uri::createFromEnvironment(
-            Environment::mock(
-                [
-                    'SCRIPT_NAME' => '/foo/index.php',
-                    'REQUEST_URI' => '/foo/index.php/bar/baz',
-                ]
-            )
-        );
-        $this->assertSame('/foo/index.php', $uri->getBasePath());
-    }
 }

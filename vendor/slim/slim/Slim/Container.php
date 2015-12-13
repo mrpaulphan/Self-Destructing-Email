@@ -42,18 +42,7 @@ use Slim\Interfaces\RouterInterface;
  *  - errorHandler: a callable with the signature: function($request, $response, $exception)
  *  - notFoundHandler: a callable with the signature: function($request, $response)
  *  - notAllowedHandler: a callable with the signature: function($request, $response, $allowedHttpMethods)
- *  - callableResolver: an instance of callableResolver
- *
- * @property-read array settings
- * @property-read \Slim\Interfaces\Http\EnvironmentInterface environment
- * @property-read \Psr\Http\Message\ServerRequestInterface request
- * @property-read \Psr\Http\Message\ResponseInterface response
- * @property-read \Slim\Interfaces\RouterInterface router
- * @property-read \Slim\Interfaces\InvocationStrategyInterface foundHandler
- * @property-read callable errorHandler
- * @property-read callable notFoundHandler
- * @property-read callable notAllowedHandler
- * @property-read \Slim\Interfaces\CallableResolverInterface callableResolver
+ *  - callableResolver: an instance of \Slim\Interfaces\CallableResolverInterface
  */
 final class Container extends PimpleContainer implements ContainerInterface
 {
@@ -141,7 +130,7 @@ final class Container extends PimpleContainer implements ContainerInterface
              * @return ResponseInterface
              */
             $this['response'] = function ($c) {
-                $headers = new Headers(['Content-Type' => 'text/html; charset=UTF-8']);
+                $headers = new Headers(['Content-Type' => 'text/html']);
                 $response = new Response(200, $headers);
 
                 return $response->withProtocolVersion($c->get('settings')['httpVersion']);
@@ -172,22 +161,22 @@ final class Container extends PimpleContainer implements ContainerInterface
             };
         }
 
+        /**
+         * This service MUST return a callable
+         * that accepts three arguments:
+         *
+         * 1. Instance of \Psr\Http\Message\ServerRequestInterface
+         * 2. Instance of \Psr\Http\Message\ResponseInterface
+         * 3. Instance of \Exception
+         *
+         * The callable MUST return an instance of
+         * \Psr\Http\Message\ResponseInterface.
+         *
+         * @param Container $c
+         *
+         * @return callable
+         */
         if (!isset($this['errorHandler'])) {
-            /**
-             * This service MUST return a callable
-             * that accepts three arguments:
-             *
-             * 1. Instance of \Psr\Http\Message\ServerRequestInterface
-             * 2. Instance of \Psr\Http\Message\ResponseInterface
-             * 3. Instance of \Exception
-             *
-             * The callable MUST return an instance of
-             * \Psr\Http\Message\ResponseInterface.
-             *
-             * @param Container $c
-             *
-             * @return callable
-             */
             $this['errorHandler'] = function ($c) {
                 return new Error($c->get('settings')['displayErrorDetails']);
             };
@@ -277,20 +266,5 @@ final class Container extends PimpleContainer implements ContainerInterface
     public function has($id)
     {
         return $this->offsetExists($id);
-    }
-
-
-    /********************************************************************************
-     * Magic methods for convenience
-     *******************************************************************************/
-
-    public function __get($name)
-    {
-        return $this->get($name);
-    }
-
-    public function __isset($name)
-    {
-        return $this->has($name);
     }
 }

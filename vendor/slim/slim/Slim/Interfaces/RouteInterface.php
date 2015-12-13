@@ -82,17 +82,6 @@ interface RouteInterface
     public function setName($name);
 
     /**
-     * Add middleware
-     *
-     * This method prepends new middleware to the route's middleware stack.
-     *
-     * @param mixed $callable The callback routine
-     *
-     * @return RouteInterface
-     */
-    public function add($callable);
-
-    /**
      * Prepare the route for use
      *
      * @param ServerRequestInterface $request

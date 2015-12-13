@@ -187,17 +187,11 @@ class Request extends Message implements ServerRequestInterface
         });
 
         $this->registerMediaTypeParser('application/xml', function ($input) {
-            $backup = libxml_disable_entity_loader(true);
-            $result = simplexml_load_string($input);
-            libxml_disable_entity_loader($backup);
-            return $result;
+            return simplexml_load_string($input);
         });
 
         $this->registerMediaTypeParser('text/xml', function ($input) {
-            $backup = libxml_disable_entity_loader(true);
-            $result = simplexml_load_string($input);
-            libxml_disable_entity_loader($backup);
-            return $result;
+            return simplexml_load_string($input);
         });
 
         $this->registerMediaTypeParser('application/x-www-form-urlencoded', function ($input) {
@@ -240,9 +234,9 @@ class Request extends Message implements ServerRequestInterface
                 $body = $this->getParsedBody();
 
                 if (is_object($body) && property_exists($body, '_METHOD')) {
-                    $this->method = $this->filterMethod((string)$body->_METHOD);
+                    $this->method = $this->filterMethod($body->_METHOD);
                 } elseif (is_array($body) && isset($body['_METHOD'])) {
-                    $this->method = $this->filterMethod((string)$body['_METHOD']);
+                    $this->method = $this->filterMethod($body['_METHOD']);
                 }
 
                 if ($this->getBody()->eof()) {
@@ -286,7 +280,7 @@ class Request extends Message implements ServerRequestInterface
         $method = $this->filterMethod($method);
         $clone = clone $this;
         $clone->originalMethod = $method;
-        $clone->method = $method;
+        $clone->method = null; // <-- Force method override recalculation
 
         return $clone;
     }
@@ -461,9 +455,8 @@ class Request extends Message implements ServerRequestInterface
             return '/';
         }
 
-        $basePath = $this->uri->getBasePath();
-        $path = $this->uri->getPath();
-        $path = $basePath . '/' . ltrim($path, '/');
+        $path = $this->uri->getBasePath();
+        $path .= $this->uri->getPath();
 
         $query = $this->uri->getQuery();
         if ($query) {

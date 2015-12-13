@@ -16,7 +16,6 @@ use FastRoute\RouteCollector;
 use FastRoute\RouteParser;
 use FastRoute\RouteParser\Std as StdParser;
 use FastRoute\DataGenerator;
-use Slim\Interfaces\RouteGroupInterface;
 use Slim\Interfaces\RouterInterface;
 use Slim\Interfaces\RouteInterface;
 
@@ -71,6 +70,8 @@ class Router implements RouterInterface
      */
     protected $routeGroups = [];
 
+    private $finalized = false;
+
     /**
      * @var \FastRoute\Dispatcher
      */
@@ -121,13 +122,18 @@ class Router implements RouterInterface
             throw new InvalidArgumentException('Route pattern must be a string');
         }
 
+        // pattern must start with a / if not empty
+        if ($pattern) {
+            $pattern = '/' . ltrim($pattern, '/');
+        }
+
         // Prepend parent group pattern(s)
         if ($this->routeGroups) {
             $pattern = $this->processGroups() . $pattern;
         }
 
-        // According to RFC methods are defined in uppercase (See RFC 7231)
-        $methods = array_map("strtoupper", $methods);
+        // Complete pattern must start with a /
+        $pattern = '/' . ltrim($pattern, '/');
 
         // Add route
         $route = new Route($methods, $pattern, $handler, $this->routeGroups, $this->routeCounter);
@@ -135,6 +141,21 @@ class Router implements RouterInterface
         $this->routeCounter++;
 
         return $route;
+    }
+
+    /**
+     * Finalize registered routes in preparation for dispatching
+     *
+     * NOTE: The routes can only be finalized once.
+     */
+    public function finalize()
+    {
+        if (!$this->finalized) {
+            foreach ($this->getRoutes() as $route) {
+                $route->finalize();
+            }
+            $this->finalized = true;
+        }
     }
 
     /**
@@ -148,6 +169,7 @@ class Router implements RouterInterface
      */
     public function dispatch(ServerRequestInterface $request)
     {
+        $this->finalize();
         $uri = '/' . ltrim($request->getUri()->getPath(), '/');
         
         return $this->createDispatcher()->dispatch(
@@ -217,7 +239,8 @@ class Router implements RouterInterface
     {
         $pattern = "";
         foreach ($this->routeGroups as $group) {
-            $pattern .= $group->getPattern();
+            // The route group's pattern doesn't end with a /
+            $pattern .= rtrim($group->getPattern(), '/');
         }
         return $pattern;
     }
@@ -228,7 +251,7 @@ class Router implements RouterInterface
      * @param string   $pattern
      * @param callable $callable
      *
-     * @return RouteGroupInterface
+     * @return RouteGroup
      */
     public function pushGroup($pattern, $callable)
     {

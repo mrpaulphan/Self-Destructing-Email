@@ -11,6 +11,7 @@ namespace Slim\Interfaces;
 use RuntimeException;
 use InvalidArgumentException;
 use Psr\Http\Message\ServerRequestInterface;
+use Slim\RouteGroup;
 
 /**
  * Router Interface
@@ -31,6 +32,14 @@ interface RouterInterface
      */
     public function map($methods, $pattern, $handler);
 
+
+    /**
+     * Finalize registered routes in preparation for dispatching
+     *
+     * NOTE: The routes can only be finalized once.
+     */
+    public function finalize();
+
     /**
      * Dispatch router for HTTP request
      *
@@ -48,7 +57,7 @@ interface RouterInterface
      * @param string   $pattern The group pattern
      * @param callable $callable A group callable
      *
-     * @return RouteGroupInterface
+     * @return RouteGroup
      */
     public function pushGroup($pattern, $callable);
 

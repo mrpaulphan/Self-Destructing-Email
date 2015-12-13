@@ -113,6 +113,20 @@ class App
         return $this->addMiddleware($callable);
     }
 
+    /********************************************************************************
+     * Container proxy methods
+     *******************************************************************************/
+
+    public function __get($name)
+    {
+        return $this->container->get($name);
+    }
+
+    public function __isset($name)
+    {
+        return $this->container->has($name);
+    }
+
     /**
      * Calling a non-existant method on App checks to see if there's an item
      * in the container than is callable and if so, calls it.
@@ -238,7 +252,7 @@ class App
     public function map(array $methods, $pattern, $callable)
     {
         if ($callable instanceof Closure) {
-            $callable = $callable->bindTo($this->container);
+            $callable = $callable->bindTo($this);
         }
 
         $route = $this->container->get('router')->map($methods, $pattern, $callable);
@@ -287,18 +301,15 @@ class App
      *
      * @param bool|false $silent
      * @return ResponseInterface
-     *
-     * @throws Exception
-     * @throws MethodNotAllowedException
-     * @throws NotFoundException
      */
     public function run($silent = false)
     {
         $request = $this->container->get('request');
         $response = $this->container->get('response');
 
-        // Ensure basePath is set
+        // Finalize routes here for middleware stack & ensure basePath is set
         $router = $this->container->get('router');
+        $router->finalize();
         if (is_callable([$request->getUri(), 'getBasePath']) && is_callable([$router, 'setBasePath'])) {
             $router->setBasePath($request->getUri()->getBasePath());
         }
@@ -354,48 +365,54 @@ class App
      */
     public function respond(ResponseInterface $response)
     {
-        // Send response
-        if (!headers_sent()) {
-            // Status
-            header(sprintf(
-                'HTTP/%s %s %s',
-                $response->getProtocolVersion(),
-                $response->getStatusCode(),
-                $response->getReasonPhrase()
-            ));
+        static $responded = false;
 
-            // Headers
-            foreach ($response->getHeaders() as $name => $values) {
-                foreach ($values as $value) {
-                    header(sprintf('%s: %s', $name, $value), false);
-                }
-            }
-        }
+        if (!$responded) {
+            // Send response
+            if (!headers_sent()) {
+                // Status
+                header(sprintf(
+                    'HTTP/%s %s %s',
+                    $response->getProtocolVersion(),
+                    $response->getStatusCode(),
+                    $response->getReasonPhrase()
+                ));
 
-        // Body
-        if (!$this->isEmptyResponse($response)) {
-            $body = $response->getBody();
-            if ($body->isSeekable()) {
-                $body->rewind();
-            }
-            $settings       = $this->container->get('settings');
-            $chunkSize      = $settings['responseChunkSize'];
-            $contentLength  = $response->getHeaderLine('Content-Length');
-            if (!$contentLength) {
-                $contentLength = $body->getSize();
-            }
-            $totalChunks    = ceil($contentLength / $chunkSize);
-            $lastChunkSize  = $contentLength % $chunkSize;
-            $currentChunk   = 0;
-            while (!$body->eof() && $currentChunk < $totalChunks) {
-                if (++$currentChunk == $totalChunks && $lastChunkSize > 0) {
-                    $chunkSize = $lastChunkSize;
-                }
-                echo $body->read($chunkSize);
-                if (connection_status() != CONNECTION_NORMAL) {
-                    break;
+                // Headers
+                foreach ($response->getHeaders() as $name => $values) {
+                    foreach ($values as $value) {
+                        header(sprintf('%s: %s', $name, $value), false);
+                    }
                 }
             }
+
+            // Body
+            if (!$this->isEmptyResponse($response)) {
+                $body = $response->getBody();
+                if ($body->isSeekable()) {
+                    $body->rewind();
+                }
+                $settings       = $this->container->get('settings');
+                $chunkSize      = $settings['responseChunkSize'];
+                $contentLength  = $response->getHeaderLine('Content-Length');
+                if (!$contentLength) {
+                    $contentLength = $body->getSize();
+                }
+                $totalChunks    = ceil($contentLength / $chunkSize);
+                $lastChunkSize  = $contentLength % $chunkSize;
+                $currentChunk   = 0;
+                while (!$body->eof() && $currentChunk < $totalChunks) {
+                    if (++$currentChunk == $totalChunks && $lastChunkSize > 0) {
+                        $chunkSize = $lastChunkSize;
+                    }
+                    echo $body->read($chunkSize);
+                    if (connection_status() != CONNECTION_NORMAL) {
+                        break;
+                    }
+                }
+            }
+
+            $responded = true;
         }
     }
 
@@ -411,8 +428,6 @@ class App
      * @param  ResponseInterface      $response The most recent Response object
      *
      * @return ResponseInterface
-     * @throws MethodNotAllowedException
-     * @throws NotFoundException
      */
     public function __invoke(ServerRequestInterface $request, ResponseInterface $response)
     {
@@ -488,7 +503,6 @@ class App
      * Dispatch the router to find the route. Prepare the route for use.
      *
      * @param ServerRequestInterface $request
-     * @param RouterInterface        $router
      * @return ServerRequestInterface
      */
     protected function dispatchRouterAndPrepareRoute(ServerRequestInterface $request, RouterInterface $router)
@@ -521,9 +535,6 @@ class App
      */
     protected function finalize(ResponseInterface $response)
     {
-        // stop PHP sending a Content-Type automatically
-        ini_set('default_mimetype', '');
-
         if ($this->isEmptyResponse($response)) {
             return $response->withoutHeader('Content-Type')->withoutHeader('Content-Length');
         }
@@ -547,9 +558,6 @@ class App
      */
     protected function isEmptyResponse(ResponseInterface $response)
     {
-        if (method_exists($response, 'isEmpty')) {
-            return $response->isEmpty();
-        }
         return in_array($response->getStatusCode(), [204, 205, 304]);
     }
 }
